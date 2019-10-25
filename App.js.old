@@ -1,0 +1,116 @@
+import React, { useState, useEffect } from 'react';
+import { Text, View, Platform, Alert } from 'react-native';
+import AppLink from 'react-native-app-link';
+import Constants from 'expo-constants';
+import * as Location from 'expo-location';
+import * as Permissions from 'expo-permissions';
+
+const locations = {
+  home: {
+    latitude: '32.08',
+    longitude: '34.89'
+  },
+  work: {
+    // TODO
+    latitude: '42.08',
+    longitude: '44.89'
+  }
+}
+
+export default App = () => {
+  const [latitude, setlatitude] = useState(null);
+  const [longitude, setlongitude] = useState(null);
+  const [working, setWorking] = useState(false);
+  const [text, setText] = useState('Waiting...');
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && !Constants.isDevice) {
+      setText('Oops, this will not work on Sketch in an Android emulator. Try it on your device!');
+    } else {
+      getLocationAsync();
+      if (latitude && longitude) {
+        checkLocation();
+      }
+    }
+  }, [latitude, longitude]);
+
+  getLocationAsync = async () => {
+    try {
+      const { status } = await Permissions.askAsync(Permissions.LOCATION);
+      if (status !== 'granted') {
+        setText('Permission to access location was denied');
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const lat = location.coords.latitude;
+      const long = location.coords.longitude;
+
+      setlatitude(lat);
+      setlongitude(long)
+      console.log(lat, long)
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  checkLocation = () => {
+    const { home, work } = locations;
+    const coords = { latitude, longitude };
+    const atHome = compareLocation(home, coords);
+    const atWork = compareLocation(work, coords);
+
+    openApp();
+
+    if(atHome) {
+      setText('you are home.');
+      setWorking(false);
+    }
+    if(atWork) {
+      setText('you are working.');
+      setWorking(true);
+    }
+  }
+
+  compareLocation = (locA, locB) => {
+    const locALat = locA.latitude.toString().substring(0, 5);
+    const locALong = locA.longitude.toString().substring(0, 5);
+    const locBLat = locB.latitude.toString().substring(0, 5);
+    const locBLong = locB.longitude.toString().substring(0, 5);
+
+    return locALat === locBLat && locALong === locBLong;
+  }
+
+  openApp = async () => {
+    try {
+      if (!working) {
+        const url = 'gett://app'
+        const supported = await AppLink.maybeOpenURL(url, { appName: 'gett', appStoreId: 'com.gett' });
+
+        if (supported) {
+          AppLink.openURL(url, { appName: 'gett', appStoreId: 'com.gett' });
+          setWorking(true);
+        } else {
+          Alert.alert('cant open the app.');
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+  }
+
+  return (
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'powderblue'
+    }}>
+      <Text>{text}</Text>
+    </View>
+  );
+}
+
+
+
+
